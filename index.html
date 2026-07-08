@@ -511,6 +511,20 @@
       <h1>Итоговый тест: 30 вопросов</h1>
       <p class="callout">Ответьте на все 30 вопросов и нажмите «Завершить тест». Проходной балл — <b>80% (24 из 30)</b>. Результат учитывается при подтверждении прохождения испытательного срока по направлению ИТ/ИБ.</p>
 
+      <div class="card" id="respondentCard">
+        <h2 style="margin-top:0;">Данные участника</h2>
+        <div class="grid2">
+          <div>
+            <label for="fullName" style="display:block;font-size:13px;color:var(--navy);font-weight:600;margin-bottom:6px;">ФИО <span style="color:var(--red);">*</span></label>
+            <input type="text" id="fullName" placeholder="Иванов Иван Иванович" style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;">
+          </div>
+          <div>
+            <label for="position" style="display:block;font-size:13px;color:var(--navy);font-weight:600;margin-bottom:6px;">Должность <span style="color:var(--red);">*</span></label>
+            <input type="text" id="position" placeholder="Специалист отдела..." style="width:100%;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:14px;font-family:inherit;">
+          </div>
+        </div>
+      </div>
+
       <div id="quizContainer"></div>
 
       <div class="nav-buttons">
@@ -644,7 +658,27 @@ function updateQuizProgress(){
     : 'Завершить тест ('+answered+'/'+questions.length+' отвечено)';
 }
 
+function buildResultMailto(fullName, position, score, total, pct, passed){
+  const subject = 'Результат теста ИТ/ИБ — '+fullName;
+  const body = [
+    'ФИО: '+fullName,
+    'Должность: '+position,
+    'Дата прохождения: '+new Date().toLocaleString('ru-RU'),
+    'Результат: '+score+' из '+total+' ('+pct+'%)',
+    'Статус: '+(passed ? 'Тест пройден' : 'Тест не пройден')
+  ].join('\n');
+  return 'mailto:sendpulse@sba.kz?subject='+encodeURIComponent(subject)+'&body='+encodeURIComponent(body);
+}
+
 function submitQuiz(){
+  const fullName = document.getElementById('fullName').value.trim();
+  const position = document.getElementById('position').value.trim();
+  if(!fullName || !position){
+    alert('Пожалуйста, укажите ФИО и должность перед завершением теста.');
+    document.getElementById('respondentCard').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+
   const unanswered = answers.map((a,i)=>a===null?i:null).filter(v=>v!==null);
   if(unanswered.length>0){
     alert('Пожалуйста, ответьте на все вопросы. Осталось без ответа: '+unanswered.length+'.');
@@ -673,6 +707,7 @@ function submitQuiz(){
 
   const pct = Math.round((score/questions.length)*100);
   const passed = pct >= 80;
+  const mailtoLink = buildResultMailto(fullName, position, score, questions.length, pct, passed);
 
   const resultBox = document.getElementById('resultBox');
   resultBox.style.display = 'block';
@@ -684,16 +719,20 @@ function submitQuiz(){
         <div class="den">${pct}%</div>
       </div>
       <div class="verdict ${passed?'pass':'fail'}">${passed? 'Тест пройден' : 'Тест не пройден'}</div>
+      <p><b>${fullName}</b>, ${position}</p>
       <p>${passed
         ? 'Поздравляем! Вы успешно прошли итоговую аттестацию по ИТ и информационной безопасности. Результат учтён как часть требований по прохождению испытательного срока.'
         : 'Для прохождения теста требуется набрать не менее 80% (24 из 30). Рекомендуем повторно изучить материалы модулей и пройти тест ещё раз.'}</p>
+      <div class="callout" style="text-align:left;font-size:13px;">Сейчас откроется ваш почтовый клиент с готовым письмом в ИТ-департамент (sendpulse@sba.kz) — проверьте данные и нажмите «Отправить» в почтовой программе, чтобы уведомление действительно ушло.</div>
       <div class="nav-buttons" style="justify-content:center;gap:14px;">
         ${!passed ? '<button class="btn btn-primary" onclick="location.reload()">Пройти тест заново</button>' : ''}
+        <button class="btn btn-gold" onclick="window.location.href='${mailtoLink}'">✉ Отправить результат в ИТ</button>
         <button class="btn btn-ghost" onclick="window.print()">Распечатать результат</button>
       </div>
     </div>
   `;
   resultBox.scrollIntoView({behavior:'smooth', block:'start'});
+  setTimeout(()=>{ window.location.href = mailtoLink; }, 500);
 }
 
 renderQuiz();
